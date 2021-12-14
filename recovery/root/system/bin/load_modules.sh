@@ -70,9 +70,6 @@ load_module()
 log_print 1 "Running $SCRIPTNAME script for TWRP..."
 
 
-load_module "focaltech_fts"
-load_module "texfat"
-load_module "ntfs"
 load_module "sec_touchscreen"
 
 finish
