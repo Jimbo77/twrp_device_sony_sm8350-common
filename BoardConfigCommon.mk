@@ -51,8 +51,8 @@ TARGET_USES_UEFI := true
 
 # Kernel
 TARGET_NO_KERNEL := false
-TARGET_KERNEL_SOURCE := kernel/sony/kernel/msm-5.4
-TARGET_KERNEL_CLANG_COMPILE := true
+#TARGET_KERNEL_SOURCE := kernel/sony/kernel/msm-5.4
+#TARGET_KERNEL_CLANG_COMPILE := true
 TARGET_KERNEL_ARCH := $(TARGET_ARCH)
 BOARD_KERNEL_IMAGE_NAME := Image
 BOARD_KERNEL_CMDLINE += androidboot.memcg=1
@@ -62,6 +62,11 @@ BOARD_KERNEL_CMDLINE += sched_enable_power_aware=1 user_debug=31
 BOARD_KERNEL_CMDLINE += printk.devkmsg=on
 BOARD_KERNEL_CMDLINE += loop.max_part=16
 BOARD_KERNEL_CMDLINE += kpti=0
+BOARD_KERNEL_CMDLINE += lpm_levels.sleep_disabled=1
+BOARD_KERNEL_CMDLINE += androidboot.bootdevice=1d84000.ufshc
+BOARD_KERNEL_CMDLINE += swiotlb=2048
+BOARD_KERNEL_CMDLINE += service_locator.enable=1
+BOARD_KERNEL_CMDLINE += msm_drm.blhack_dsi_display0=dsi_panel_somc_sagami_cmd:config0
 
 BOARD_KERNEL_PAGESIZE := 4096
 BOARD_BOOT_HEADER_VERSION := 3
@@ -76,7 +81,7 @@ BOARD_MKBOOTIMG_ARGS += --tags_offset $(BOARD_KERNEL_TAGS_OFFSET)
 #BOARD_MKBOOTIMG_ARGS += --kernel_offset $(BOARD_KERNEL_OFFSET)
 BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
 BOARD_KERNEL_SEPARATED_DTBO := true
-BOARD_INCLUDE_DTB_IN_BOOTIMG := true
+#BOARD_INCLUDE_DTB_IN_BOOTIMG := true
 
 # Platform
 TARGET_BOARD_PLATFORM := $(TARGET_BOOTLOADER_BOARD_NAME)
@@ -100,12 +105,27 @@ BOARD_BUILD_SYSTEM_ROOT_IMAGE := false
 # Dynamic/Logical Partitions
 BOARD_SUPER_PARTITION_SIZE := 0x360000000
 BOARD_SUPER_PARTITION_GROUPS := sod_dynamic_partitions
-BOARD_SOD_DYNAMIC_PARTITIONS_SIZE := 0x1afc00000 # BOARD_SUPER_PARTITION_SIZE - 4MB
+
+# Set error limit to SUPER_PARTITION_SIZE - 500MiB
+BOARD_SUPER_PARTITION_ERROR_LIMIT := 0x340c00000
+
+# DYNAMIC_PARTITIONS_SIZE = (SUPER_PARTITION_SIZE / 2) - 4MiB
+BOARD_SOD_DYNAMIC_PARTITIONS_SIZE := 0x1afc00000
 BOARD_SOD_DYNAMIC_PARTITIONS_PARTITION_LIST := \
     system \
     system_ext \
     vendor \
-    product 
+    product
+
+# Slightly overprovision dynamic partitions with 50MiB to
+# allow on-device file editing
+BOARD_SYSTEMIMAGE_PARTITION_RESERVED_SIZE := 52428800
+BOARD_SYSTEM_EXTIMAGE_PARTITION_RESERVED_SIZE := 52428800
+BOARD_VENDORIMAGE_PARTITION_RESERVED_SIZE := 52428800
+BOARD_PRODUCTIMAGE_PARTITION_RESERVED_SIZE := 52428800
+
+# Reserve space for data encryption (0x36e4f5f000-0x4000)
+BOARD_USERDATAIMAGE_PARTITION_SIZE := 0x36e4f5b000
 
 # Workaround for error copying vendor files to recovery ramdisk
 BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := ext4
@@ -119,8 +139,12 @@ TARGET_COPY_OUT_VENDOR := vendor
 BOARD_HAS_LARGE_FILESYSTEM := true
 BOARD_HAS_NO_SELECT_BUTTON := true
 BOARD_SUPPRESS_SECURE_ERASE := true
-BOARD_USES_RECOVERY_AS_BOOT := true
+# This target has recovery partitions and bootloader
+# will not set the skip_initramfs cmdline bootparam,
+# so if we turn on recovery as boot, we always end up
+# booting to recovery. Nice!
 TARGET_NO_RECOVERY := false
+BOARD_USES_RECOVERY_AS_BOOT := false
 TARGET_RECOVERY_DEVICE_MODULES += \
     libandroidicu \
     libcap \
